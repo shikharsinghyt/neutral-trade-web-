@@ -1,0 +1,67 @@
+{
+  "entities": {
+    "Signal": {
+      "title": "Trading Signal",
+      "description": "A trading recommendation published by the admin.",
+      "type": "object",
+      "properties": {
+        "ticker": { "type": "string", "description": "Stock symbol (e.g., TSLA, AAPL)" },
+        "name": { "type": "string", "description": "Full asset name" },
+        "action": { "type": "string", "enum": ["BUY", "SELL"], "description": "Trade direction" },
+        "entry": { "type": "number", "description": "Entry price range" },
+        "target": { "type": "number", "description": "Target price" },
+        "sl": { "type": "number", "description": "Stop loss price" },
+        "confidence": { "type": "number", "description": "AI Confidence score (0-100)" },
+        "patterns": { "type": "array", "description": "Patterns detected (e.g., RSI Bullish Div)" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the signal was published" },
+        "status": { "type": "string", "enum": ["ACTIVE", "HIT", "STOPPED"], "description": "Current status of the signal" }
+      },
+      "required": ["ticker", "name", "action", "entry", "target", "sl", "timestamp"]
+    },
+    "Post": {
+      "title": "Community Post",
+      "description": "A post in the community forum.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorPhoto": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "likes": { "type": "number" }
+      },
+      "required": ["title", "content", "authorId", "createdAt"]
+    },
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Public and private user data.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "email": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "isAdmin": { "type": "boolean" },
+        "bio": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "displayName", "email", "phoneNumber"]
+    }
+  },
+  "firestore": {
+    "signals": {
+      "schema": "Signal",
+      "description": "Collection of trading signals."
+    },
+    "posts": {
+      "schema": "Post",
+      "description": "Collection of community forum posts."
+    },
+    "users": {
+      "schema": "UserProfile",
+      "description": "Unified user profile collection."
+    }
+  }
+}
