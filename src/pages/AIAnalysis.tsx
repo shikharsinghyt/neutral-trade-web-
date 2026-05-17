@@ -29,7 +29,7 @@ export default function AIAnalysis() {
   const [analyzing, setAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [statusText, setStatusText] = useState('');
-  const [latestSignal, setLatestSignal] = useState<Signal | null>(null);
+  const [signals, setSignals] = useState<Signal[]>([]);
 
   const statuses = [
     'Initializing Neural Processing...',
@@ -42,13 +42,11 @@ export default function AIAnalysis() {
   ];
 
   useEffect(() => {
-    // Listen for the latest signal from Firestore
-    const q = query(collection(db, 'signals'), orderBy('timestamp', 'desc'), limit(1));
+    // Listen for recent signals from Firestore
+    const q = query(collection(db, 'signals'), orderBy('timestamp', 'desc'), limit(10));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Signal[];
-      if (data.length > 0) {
-        setLatestSignal(data[0]);
-      }
+      setSignals(data);
     });
 
     return () => unsubscribe();
@@ -73,13 +71,15 @@ export default function AIAnalysis() {
         clearInterval(textInterval);
         setTimeout(() => {
           setAnalyzing(false);
+          // Scroll to results
+          window.scrollTo({ top: 400, behavior: 'smooth' });
         }, 1000);
       }
     }, 1500);
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-6 min-h-screen">
+    <div className="max-w-5xl mx-auto py-12 px-6 min-h-screen">
       <div className="text-center mb-16">
         <div className="flex items-center justify-center gap-2 text-cyan-400 text-[10px] font-mono mb-2 uppercase tracking-[0.25em]">
           <span className="flex h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
@@ -134,77 +134,84 @@ export default function AIAnalysis() {
             </div>
           </motion.div>
         ) : (
-          latestSignal && (
-            <motion.div
-              key="signal"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-6"
-            >
-              <div className="glass-card overflow-hidden relative">
-                <div className="absolute top-0 right-0 p-8 pointer-events-none opacity-5">
-                   <svg width="160" height="160" viewBox="0 0 120 120">
-                     <circle cx="60" cy="60" r="55" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="10 5" />
-                     <path d="M20 60 Q 40 20, 60 60 T 100 60" fill="none" stroke="currentColor" strokeWidth="1" />
-                   </svg>
-                </div>
-
-                <div className={`h-1 w-full ${latestSignal.action === 'BUY' ? 'bg-emerald-400' : 'bg-rose-400'} shadow-[0_0_15px_rgba(16,185,129,0.5)]`} />
-                <CardContent className="p-10">
-                  <div className="flex justify-between items-start mb-12">
-                    <div className="flex items-center gap-6">
-                      <div className="w-20 h-20 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 shadow-inner">
-                        <span className="text-4xl font-black tracking-tighter text-white">{latestSignal.ticker}</span>
+          <div className="space-y-12">
+            {signals.length > 0 ? (
+              <div className="grid grid-cols-1 gap-8">
+                {signals.map((signal, index) => (
+                  <motion.div
+                    key={signal.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <div className="glass-card overflow-hidden relative">
+                      <div className="absolute top-0 right-0 p-8 pointer-events-none opacity-5">
+                         <TrendingUp className="w-32 h-32" />
                       </div>
-                      <div>
-                        <div className="flex items-center gap-3 mb-1">
-                          <Badge className={`text-[10px] font-black tracking-widest px-3 py-0.5 rounded-full ${latestSignal.action === 'BUY' ? 'bg-emerald-400/20 text-emerald-400 border-emerald-400/30' : 'bg-rose-400/20 text-rose-400 border-rose-400/30'}`}>
-                            {latestSignal.action} SIGNAL
-                          </Badge>
-                          <span className={`${latestSignal.action === 'BUY' ? 'text-emerald-400' : 'text-rose-400'} text-[10px] font-bold uppercase tracking-tighter`}>Bullish Patterns</span>
-                        </div>
-                        <h3 className="text-2xl font-bold text-white">{latestSignal.name || 'Equity Asset'}</h3>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-[10px] text-slate-500 uppercase tracking-[0.2em] mb-1 font-bold">Confidence</div>
-                      <div className="text-5xl font-black text-cyan-400 text-glow-cyan tracking-tighter">{latestSignal.confidence}<span className="text-xl opacity-30">%</span></div>
-                    </div>
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                    <div className="p-6 rounded-2xl bg-black/20 border border-white/5">
-                      <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-2 font-bold">Entry Zone</div>
-                      <div className="text-2xl font-mono font-bold text-white tracking-tight">${latestSignal.entry}</div>
-                    </div>
-                    <div className="p-6 rounded-2xl bg-black/20 border border-white/5">
-                      <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-2 font-bold">Target Profit</div>
-                      <div className="text-2xl font-mono font-bold text-cyan-400 tracking-tight">${latestSignal.target}</div>
-                    </div>
-                    <div className="p-6 rounded-2xl bg-black/20 border border-white/5 border-l-rose-500/50">
-                      <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-2 font-bold">Stop Loss</div>
-                      <div className="text-2xl font-mono font-bold text-rose-400 tracking-tight">${latestSignal.sl}</div>
-                    </div>
-                  </div>
-
-                  <div className="pt-8 border-t border-white/5">
-                    <div className="text-[10px] font-bold text-slate-500 mb-4 uppercase tracking-[0.2em] flex items-center gap-2">
-                      <TrendingUp className="w-3.5 h-3.5 text-cyan-400" />
-                      Neural Patterns Catalogued
-                    </div>
-                    <div className="flex flex-wrap gap-3">
-                      {latestSignal.patterns?.map((pattern, i) => (
-                        <div key={i} className="px-5 py-2 bg-white/5 border border-white/10 rounded-full text-[11px] text-slate-300 font-medium hover:bg-white/10 transition-colors cursor-default">
-                          {pattern}
+                      <div className={`h-1 w-full ${signal.action === 'BUY' ? 'bg-emerald-400' : 'bg-rose-400'} shadow-[0_0_15px_rgba(16,185,129,0.5)]`} />
+                      <CardContent className="p-8">
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-10">
+                          <div className="flex items-center gap-6">
+                            <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 shadow-inner">
+                              <span className="text-2xl font-black tracking-tighter text-white">{signal.ticker}</span>
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-3 mb-1">
+                                <Badge className={`text-[9px] font-black tracking-widest px-2 py-0.5 rounded-full ${signal.action === 'BUY' ? 'bg-emerald-400/20 text-emerald-400 border-emerald-400/30' : 'bg-rose-400/20 text-rose-400 border-rose-400/30'}`}>
+                                  {signal.action} SIGNAL
+                                </Badge>
+                                <span className={`text-[10px] font-bold uppercase tracking-tight text-slate-500`}>
+                                  {signal.timestamp?.seconds ? new Date(signal.timestamp.seconds * 1000).toLocaleDateString() : 'Syncing...'}
+                                </span>
+                              </div>
+                              <h3 className="text-xl font-bold text-white">{signal.name || 'Equity Asset'}</h3>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-8">
+                            <div className="text-right">
+                              <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-1 font-bold">Confidence</div>
+                              <div className="text-4xl font-black text-cyan-400 tracking-tighter">{signal.confidence}%</div>
+                            </div>
+                          </div>
                         </div>
-                      ))}
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+                          <div className="p-5 rounded-xl bg-black/20 border border-white/5">
+                            <div className="text-[9px] text-slate-500 uppercase tracking-widest mb-2 font-bold">Entry</div>
+                            <div className="text-xl font-mono font-bold text-white tracking-tight">₹{signal.entry}</div>
+                          </div>
+                          <div className="p-5 rounded-xl bg-black/20 border border-white/5 border-l-cyan-500/30">
+                            <div className="text-[9px] text-slate-500 uppercase tracking-widest mb-2 font-bold">Target</div>
+                            <div className="text-xl font-mono font-bold text-cyan-400 tracking-tight">₹{signal.target}</div>
+                          </div>
+                          <div className="p-5 rounded-xl bg-black/20 border border-white/5 border-l-rose-500/30">
+                            <div className="text-[9px] text-slate-500 uppercase tracking-widest mb-2 font-bold">Stop Loss</div>
+                            <div className="text-xl font-mono font-bold text-rose-400 tracking-tight">₹{signal.sl}</div>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          {signal.patterns?.map((pattern, i) => (
+                            <div key={i} className="px-4 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                              {pattern}
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
                     </div>
-                  </div>
-                </CardContent>
+                  </motion.div>
+                ))}
               </div>
-            </motion.div>
-          )
-        )}
+            ) : (
+              <div className="text-center py-20 bg-white/5 rounded-3xl border border-dashed border-white/10">
+                <ShieldAlert className="w-12 h-12 text-slate-700 mx-auto mb-4 opacity-20" />
+                <p className="text-slate-500 font-mono text-[10px] uppercase tracking-widest font-bold">Initializing Signal Feed... No active signals detected.</p>
+              </div>
+            )}
+          </div>
+        )
+        }
       </AnimatePresence>
     </div>
   );

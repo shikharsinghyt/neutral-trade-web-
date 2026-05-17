@@ -13,7 +13,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 declare global {
   interface Window {
@@ -204,10 +205,8 @@ export default function Market() {
             <div className="flex items-center justify-between mb-4 px-2">
               <h4 className="text-slate-500 font-bold uppercase text-[10px] tracking-[0.2em]">Watchlist</h4>
               <DropdownMenu>
-                <DropdownMenuTrigger>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full hover:bg-white/5">
-                    <ArrowUpDown className="h-3 w-3 text-slate-500" />
-                  </Button>
+                <DropdownMenuTrigger className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-8 w-8 p-0 rounded-full hover:bg-white/5")}>
+                  <ArrowUpDown className="h-3 w-3 text-slate-500" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-slate-900 border-white/10 text-slate-300">
                   <DropdownMenuItem onClick={() => handleSort('symbol')}>Sort by Symbol</DropdownMenuItem>

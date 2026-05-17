@@ -16,14 +16,20 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Clock,
-  Newspaper
+  Newspaper,
+  ShieldCheck,
+  Target
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { db } from '../lib/firebase';
+import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 
 export default function Dashboard() {
   const [marketData, setMarketData] = useState<StockData[]>([]);
   const [indices, setIndices] = useState<StockData[]>([]);
+  const [signals, setSignals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -42,8 +48,18 @@ export default function Dashboard() {
     };
 
     loadMarket();
-    const interval = setInterval(loadMarket, 10000);
-    return () => clearInterval(interval);
+    
+    // Listen for signals
+    const q = query(collection(db, 'signals'), orderBy('timestamp', 'desc'), limit(3));
+    const unsubscribeSignals = onSnapshot(q, (snapshot) => {
+      setSignals(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    const interval = setInterval(loadMarket, 30000); // 30s refresh for dashboard
+    return () => {
+      clearInterval(interval);
+      unsubscribeSignals();
+    };
   }, []);
 
   const gainers = [...marketData].sort((a, b) => b.changePercent - a.changePercent).slice(0, 4);
@@ -105,28 +121,87 @@ export default function Dashboard() {
         <TabsContent value="overview" className="space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
-              <div className="glass-card p-10 min-h-[400px] flex flex-col items-center justify-center relative overflow-hidden">
+              {/* Highlight Signal if exists */}
+              {signals.length > 0 && (
+                <div className="glass-card overflow-hidden relative border-cyan-500/20">
+                  <div className="absolute top-0 right-0 p-6 opacity-10">
+                    <ShieldCheck className="w-24 h-24 text-cyan-400" />
+                  </div>
+                  <div className="bg-cyan-500/10 px-6 py-2 border-b border-cyan-500/20 flex items-center gap-2">
+                    <Zap className="w-3 h-3 text-cyan-400" />
+                    <span className="text-[9px] font-black uppercase tracking-widest text-cyan-400">Institutional Signal Detected</span>
+                  </div>
+                  <div className="p-8">
+                    <div className="flex justify-between items-center mb-6">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center border border-white/10 text-xl font-black text-white">{signals[0].ticker}</div>
+                        <div>
+                           <h4 className="text-lg font-bold text-white tracking-tight">{signals[0].name}</h4>
+                           <Badge variant="outline" className={`text-[8px] uppercase tracking-tighter ${signals[0].action === 'BUY' ? 'border-emerald-400 text-emerald-400' : 'border-rose-400 text-rose-400'}`}>{signals[0].action}</Badge>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-black text-white tracking-tighter">₹{signals[0].price || signals[0].entry}</div>
+                        <div className="text-[10px] text-cyan-400 font-bold uppercase tracking-tight">Confidence: {signals[0].confidence}%</div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 mb-4">
+                       <div className="bg-black/20 p-4 rounded-xl border border-white/5">
+                          <div className="text-[8px] text-slate-500 font-bold uppercase mb-1">Target</div>
+                          <div className="text-sm font-mono font-bold text-white">₹{signals[0].target}</div>
+                       </div>
+                       <div className="bg-black/20 p-4 rounded-xl border border-white/5">
+                          <div className="text-[8px] text-slate-500 font-bold uppercase mb-1">Stop</div>
+                          <div className="text-sm font-mono font-bold text-rose-400">₹{signals[0].sl}</div>
+                       </div>
+                       <a href="/ai-analysis" className="bg-cyan-500/10 hover:bg-cyan-500/20 transition-colors p-4 rounded-xl border border-cyan-500/30 flex items-center justify-center gap-2">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-cyan-400">Full Report</span>
+                          <ArrowUpRight className="w-3 h-3 text-cyan-400" />
+                       </a>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="glass-card p-10 min-h-[300px] flex flex-col items-center justify-center relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-8 opacity-5">
                   <PieChart className="w-64 h-64" />
                 </div>
                 <div className="text-center space-y-4">
-                  <Zap className="w-16 h-16 text-cyan-400 mx-auto animate-pulse" />
+                  <Activity className="w-16 h-16 text-cyan-400 mx-auto animate-pulse" />
                   <h3 className="text-2xl font-bold text-white tracking-tight">Main Heatmap Engine</h3>
-                  <p className="text-slate-500 max-w-sm font-light">Interactive visualization engine is processing data. Live market flows will appear here shortly.</p>
+                  <p className="text-slate-500 max-w-sm font-light">Institutional flows and sectoral heatmap analysis is processing. Professional data streams will sync here.</p>
                 </div>
               </div>
             </div>
 
             <div className="space-y-8">
               <div className="glass-card p-8">
-                <div className="flex items-center gap-3 mb-6">
-                  <Newspaper className="text-cyan-400 w-5 h-5" />
-                  <h4 className="text-white font-bold text-sm uppercase tracking-widest">Market Brief</h4>
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <Target className="text-cyan-400 w-5 h-5" />
+                    <h4 className="text-white font-bold text-sm uppercase tracking-widest">Recent Signals</h4>
+                  </div>
+                  <a href="/ai-analysis" className="text-[10px] text-slate-500 hover:text-cyan-400 transition-colors uppercase font-bold tracking-widest">View All</a>
                 </div>
-                <div className="space-y-6">
-                  <NewsItem time="12m ago" title="RBI signals potential policy shift in upcoming Q4 review." />
-                  <NewsItem time="45m ago" title="Reliance advances as green energy vertical gains momentum." />
-                  <NewsItem time="2h ago" title="IT sector sees heavy institutional accumulation on dip." />
+                <div className="space-y-4">
+                  {signals.length > 1 ? signals.slice(1).map((s) => (
+                    <div key={s.id} className="p-4 rounded-xl bg-white/3 border border-white/5 flex justify-between items-center group cursor-pointer hover:bg-white/5 transition-all">
+                       <div className="flex items-center gap-3">
+                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black ${s.action === 'BUY' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>{s.ticker.slice(0, 2)}</div>
+                         <div>
+                            <div className="text-xs font-bold text-white tracking-tight">{s.ticker}</div>
+                            <div className="text-[9px] text-slate-500 uppercase">{s.action} @ ₹{s.entry}</div>
+                         </div>
+                       </div>
+                       <ArrowUpRight className="w-3 h-3 text-slate-700 group-hover:text-cyan-400 transition-colors" />
+                    </div>
+                  )) : (
+                    <div className="text-center py-10 opacity-20">
+                       <ShieldCheck className="w-8 h-8 mx-auto mb-2" />
+                       <div className="text-[8px] uppercase tracking-widest font-black">Scanning Neural Core...</div>
+                    </div>
+                  )}
                 </div>
               </div>
 

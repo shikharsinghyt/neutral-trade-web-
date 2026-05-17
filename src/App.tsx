@@ -3,17 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Routes, Route, Link, useLocation } from 'react-router-dom';
+import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { 
   TrendingUp, 
   Cpu, 
   MessageSquare, 
   LayoutDashboard, 
-  LogOut, 
-  LogIn,
   Menu,
   X,
   ShieldCheck
@@ -27,9 +24,7 @@ import AIAnalysis from './pages/AIAnalysis';
 import Market from './pages/Market';
 import Community from './pages/Community';
 import Admin from './pages/Admin';
-import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
-import Login from './pages/Login';
 
 // Components
 import ThreeBackground from './components/ThreeBackground';
@@ -39,19 +34,22 @@ function Navbar() {
   const { user, isAdmin, login, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const isVerified = sessionStorage.getItem('admin_verified') === 'true';
 
   const navItems = [
+    { name: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
     { name: 'Signals', path: '/ai-analysis', icon: <Cpu className="w-4 h-4" /> },
     { name: 'NSE/BSE Market', path: '/market', icon: <TrendingUp className="w-4 h-4" /> },
     { name: 'Community Hub', path: '/community', icon: <MessageSquare className="w-4 h-4" /> },
   ];
 
-  if (user) {
-    navItems.unshift({ name: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard className="w-4 h-4" /> });
-  }
-
-  if (isAdmin) {
-    navItems.push({ name: 'Admin', path: '/admin', icon: <ShieldCheck className="w-4 h-4" /> });
+  // If verified in this session, provide easy return to portal
+  if (isVerified) {
+    navItems.push({ 
+      name: 'Admin', 
+      path: '/admin-portal', 
+      icon: <ShieldCheck className="w-4 h-4 text-cyan-400" /> 
+    });
   }
 
   return (
@@ -80,25 +78,11 @@ function Navbar() {
         </div>
 
         <div className="hidden md:flex items-center gap-4">
-          {user ? (
-            <div className="flex items-center gap-4">
-              <div className="text-right hidden lg:block">
-                <div className="text-[10px] text-white font-bold leading-none mb-1 uppercase tracking-wider">{user.displayName}</div>
-                <div className="text-[9px] text-cyan-400 font-bold uppercase tracking-tighter">AI Tier Member</div>
-              </div>
-              <Avatar className="w-8 h-8 ring-1 ring-white/20">
-                <AvatarImage src={user.photoURL || ''} />
-                <AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback>
-              </Avatar>
-              <Button variant="ghost" size="icon" onClick={logout} className="text-slate-400 hover:text-rose-400">
-                <LogOut className="w-4 h-4" />
-              </Button>
-            </div>
-          ) : (
-            <Button onClick={() => window.location.href = '/login'} className="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-6 h-9 rounded-full text-xs font-bold transition-all backdrop-blur-md">
-              SIGN UP / LOGIN
+          <Link to="/dashboard">
+            <Button className="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-6 h-9 rounded-full text-xs font-bold transition-all backdrop-blur-md">
+              DASHBOARD
             </Button>
-          )}
+          </Link>
         </div>
 
         {/* Mobile menu button */}
@@ -127,11 +111,9 @@ function Navbar() {
                 {item.name}
               </Link>
             ))}
-            {user ? (
-              <Button onClick={logout} variant="destructive" className="w-full">Disconnect</Button>
-            ) : (
-              <Button onClick={login} className="w-full bg-amber-600">Connect</Button>
-            )}
+            <Link to="/dashboard" onClick={() => setIsOpen(false)} className="w-full">
+              <Button className="w-full bg-cyan-500 text-slate-950 font-bold uppercase tracking-widest">Get Started</Button>
+            </Link>
           </motion.div>
         )}
       </AnimatePresence>
@@ -140,6 +122,16 @@ function Navbar() {
 }
 
 export default function App() {
+  const { isAdmin, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-transparent text-slate-200">
       <ThreeBackground />
@@ -150,10 +142,9 @@ export default function App() {
           <Route path="/ai-analysis" element={<AIAnalysis />} />
           <Route path="/market" element={<Market />} />
           <Route path="/community" element={<Community />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/signup" element={<Signup />} />
+          <Route path="/admin-portal" element={<Admin />} />
+          <Route path="/admin" element={<Navigate to="/admin-portal" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/login" element={<Login />} />
         </Routes>
       </main>
       

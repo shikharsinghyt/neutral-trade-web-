@@ -31,12 +31,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userSnap = await getDoc(userRef);
         
         if (userSnap.exists()) {
-          setIsAdmin(userSnap.data()?.isAdmin || false);
+          const isUserEmailAdmin = user.email?.toLowerCase() === 'rajnibhadoriya324@gmail.com';
+          const dbIsAdmin = userSnap.data()?.isAdmin || false;
+          
+          if (isUserEmailAdmin && !dbIsAdmin) {
+            // Force update admin status for the specific email
+            await setDoc(userRef, { isAdmin: true }, { merge: true });
+            setIsAdmin(true);
+          } else {
+            setIsAdmin(dbIsAdmin);
+          }
         } else {
           // Create initial profile if it doesn't exist
-          // First user who signs up with a specific email can be admin if we wanted, 
-          // or we can hardcode for the developer email.
-          const isUserEmailAdmin = user.email === 'rajnibhadoriya324@gmail.com';
+          const isUserEmailAdmin = user.email?.toLowerCase() === 'rajnibhadoriya324@gmail.com';
           await setDoc(userRef, {
             uid: user.uid,
             displayName: user.displayName,
